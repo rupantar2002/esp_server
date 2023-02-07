@@ -57,9 +57,9 @@ bool connectivity_SetStaCred(const char *ssid, const char *password)
 
 bool connectivity_StartWifi()
 {
-    IP4_ADDR(&gIpInfo.ip, 192, 168, 0, 1);
-    IP4_ADDR(&gIpInfo.gw, 192, 168, 0, 1);
-    IP4_ADDR(&gIpInfo.netmask, 255, 255, 255, 0);
+    // IP4_ADDR(&gIpInfo.ip, 192, 168, 0, 1);
+    // IP4_ADDR(&gIpInfo.gw, 192, 168, 0, 1);
+    // IP4_ADDR(&gIpInfo.netmask, 255, 255, 255, 0);
 
     // if (pgApCred == NULL || pgStaCred == NULL || gMode == WIFI_MODE_NULL || gMode == WIFI_MODE_MAX)
     // {
@@ -102,7 +102,7 @@ void intf_wifi_ApStartedEventCallback()
 void intf_wifi_ApStaConnectedEventCallback(wifi_event_ap_staconnected_t info)
 {
     // server_StartSocket();
-    server_Start();
+    // server_Start();
 }
 
 // void intf_wifi_ApStaDisconnectedEventCallback(wifi_event_ap_stadisconnected_t info);
@@ -112,7 +112,7 @@ void intf_wifi_ApStoppedEventCallback()
     if (gApConnFlg)
     {
         // server_StopSocket();
-        server_Stop();
+        // server_Stop();
         gApConnFlg = false;
     }
 }
@@ -140,6 +140,7 @@ void intf_wifi_StaConnectedEventCallback(esp_netif_ip_info_t ipInfo)
     if (!gStaConnFlg)
     {
         gStaConnFlg = true;
+        server_Start();
     }
 }
 

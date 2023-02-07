@@ -1,35 +1,56 @@
 #include "server.h"
 #include <esp_http_server.h>
 #include <esp_log.h>
+#include <esp_err.h>
+#include <mdns.h>
 
 #define MIN(a, b) a > b ? b : a
 
 static const char *TAG = "server";
 
-extern const uint8_t PAGE_ONE_START[] asm("_binary_page1_html_start");
-extern const uint8_t PAGE_ONE_STOP[] asm("_binary_page1_html_end");
+extern const uint8_t INDEX_HTML_START[] asm("_binary_index_html_start");
+extern const uint8_t INDEX_HTML_STOP[] asm("_binary_index_html_end");
+
+extern const uint8_t APP_JS_START[] asm("_binary_app_js_start");
+extern const uint8_t APP_JS_STOP[] asm("_binary_app_js_end");
+
+extern const uint8_t CONFIG_JSON_START[] asm("_binary_config_json_start");
+extern const uint8_t CONFIG_JSON_STOP[] asm("_binary_config_json_end");
 
 static httpd_handle_t gServer = NULL;
 
 /* ========== URI =========== */
-static httpd_uri_t gUriGetPage1 = {0};
-static httpd_uri_t gUriPostPage1 = {0};
+static httpd_uri_t gUriGetIndexHtml = {0};
+static httpd_uri_t gUriPostIndexHtml = {0};
+static httpd_uri_t gUriAppJs = {0};
+static httpd_uri_t gUriConfigJson = {0};
 
 /* ===== URI HANDLERS ======= */
-static esp_err_t GetReqHandler_Page1(httpd_req_t *req);
-static esp_err_t PostReqHandler_Page1(httpd_req_t *req);
+static esp_err_t GetReqHandler_index_html(httpd_req_t *req);
+static esp_err_t PostReqHandler_index_html(httpd_req_t *req);
+static esp_err_t GetReqHandler_app_js(httpd_req_t *req);
+static esp_err_t GetReqHandler_config_json(httpd_req_t *req);
 
 void server_Init()
 {
-    gUriGetPage1.handler = GetReqHandler_Page1;
-    gUriGetPage1.method = HTTP_GET;
-    gUriGetPage1.uri = "/";
-    gUriGetPage1.user_ctx = NULL;
+    gUriGetIndexHtml.handler = GetReqHandler_index_html;
+    gUriGetIndexHtml.method = HTTP_GET;
+    gUriGetIndexHtml.uri = "/";
+    // gUriGetIndexHtml.user_ctx = NULL;
 
-    gUriPostPage1.handler = PostReqHandler_Page1;
-    gUriPostPage1.method = HTTP_POST;
-    gUriPostPage1.uri = "/";
-    gUriPostPage1.user_ctx = NULL;
+    gUriPostIndexHtml.handler = PostReqHandler_index_html;
+    gUriPostIndexHtml.method = HTTP_POST;
+    gUriPostIndexHtml.uri = "/";
+    // gUriPostIndexHtml.user_ctx = NULL;
+
+    gUriAppJs.handler = GetReqHandler_app_js;
+    gUriAppJs.method = HTTP_GET;
+    gUriAppJs.uri = "/app.js";
+    // gUriAppJs.user_ctx = NULL;
+
+    gUriConfigJson.handler = GetReqHandler_config_json;
+    gUriConfigJson.method = HTTP_GET;
+    gUriConfigJson.uri = "/config.json";
 }
 
 void server_Start()
@@ -39,8 +60,25 @@ void server_Start()
     if (httpd_start(&gServer, &config) == ESP_OK)
     {
         /* Register URI handlers */
-        httpd_register_uri_handler(gServer, &gUriGetPage1);
-        httpd_register_uri_handler(gServer, &gUriPostPage1);
+        httpd_register_uri_handler(gServer, &gUriGetIndexHtml);
+        httpd_register_uri_handler(gServer, &gUriPostIndexHtml);
+        httpd_register_uri_handler(gServer, &gUriAppJs);
+        httpd_register_uri_handler(gServer, &gUriConfigJson);
+
+        /*=========MDNS========= */
+
+        mdns_init();
+        mdns_hostname_set("myserver-esp");
+        // mdns_instance_name_set(MDNS_INSTANCE);
+
+        // mdns_txt_item_t serviceTxtData[] = {
+        //     {"board", "esp32"},
+        //     {"path", "/"}};
+
+        // ESP_ERROR_CHECK(mdns_service_add("ESP32-WebServer", "_http", "_tcp", 80, serviceTxtData,
+        //                                  sizeof(serviceTxtData) / sizeof(serviceTxtData[0])));
+
+        /*====================== */
 
         ESP_LOGI(TAG, "server Started\n");
         ESP_LOGI(TAG, "port->%d\n", config.server_port);
@@ -148,18 +186,19 @@ void server_Stop()
 
 /* ====================== HANDLER DEFINITIONS ========================= */
 
-esp_err_t GetReqHandler_Page1(httpd_req_t *req)
+esp_err_t GetReqHandler_index_html(httpd_req_t *req)
 {
     ESP_LOGW(TAG, "page1 get request\r\n");
-    httpd_resp_send(req, (const char *)PAGE_ONE_START, HTTPD_RESP_USE_STRLEN);
+    httpd_resp_send(req, (const char *)INDEX_HTML_START, HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
 
-esp_err_t PostReqHandler_Page1(httpd_req_t *req)
+esp_err_t PostReqHandler_index_html(httpd_req_t *req)
 {
     ESP_LOGI(TAG, "page1 post request\r\n");
 
-    char content[100];
+    static char content[1024];
+    memset(content, 0, 1024);
     uint32_t recv_Size = MIN(req->content_len, sizeof(content));
     int ret = httpd_req_recv(req, content, recv_Size);
 
@@ -177,6 +216,18 @@ esp_err_t PostReqHandler_Page1(httpd_req_t *req)
     ESP_LOGI(TAG, "HEADER->Content-Type->%s", buff);
     httpd_req_get_hdr_value_str(req, "Content-Length", buff, sizeof(buff));
     ESP_LOGI(TAG, "HEADER->Content-Length->%s\r\n", buff);
-    httpd_resp_send(req, "Hi I am your server", strlen("He I am your server"));
+    httpd_resp_send(req, content, HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
+}
+
+static esp_err_t GetReqHandler_app_js(httpd_req_t *req)
+{
+    ESP_LOGW(TAG, "app.js get Request\r\n");
+    return httpd_resp_send(req, (const char *)APP_JS_START, HTTPD_RESP_USE_STRLEN);
+}
+
+static esp_err_t GetReqHandler_config_json(httpd_req_t *req)
+{
+    ESP_LOGW(TAG, "config.json get Request\r\n");
+    return httpd_resp_send(req, (const char *)CONFIG_JSON_START, HTTPD_RESP_USE_STRLEN);
 }

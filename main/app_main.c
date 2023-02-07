@@ -14,28 +14,11 @@ static void Setup(void);
 void app_main(void)
 {
     Setup();
-    connectivity_SetMode(WIFI_MODE_AP);
+    connectivity_SetMode(WIFI_MODE_STA);
     connectivity_SetStaCred("Typical", "Arghya@19");
     connectivity_SetApCred("ssid", "12345678");
     connectivity_StartWifi();
-    //connectivity_Connect(true);
-    // server_Init();
-
-    // while (1)
-    // {
-    //     // if (connectivity_StaStatus())
-    //     // {
-    //     //     if (!temp)
-    //     //     {
-    //     //     }
-    //     // }
-    //     // else
-    //     // {
-    //     //     server_Stop
-    //     // }
-    //     // connectivity_StaStatus() ? server_Start() : server_Stop();
-    //     vTaskDelay(pdMS_TO_TICKS(1000));
-    // }
+    connectivity_Connect(true);
 }
 
 void Setup(void)
